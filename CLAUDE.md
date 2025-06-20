@@ -1,0 +1,208 @@
+# 車両セットアップ管理システム - 開発ガイド
+
+## 概要
+このシステムは、レースやトラックデーでの車両セットアップデータを効率的に記録・管理するためのWebアプリケーションです。モバイルファースト設計により、サーキットでの入力作業を最適化しつつ、PCでの詳細な分析機能も提供します。
+
+## システムの特徴
+
+### 1. モバイルファースト設計
+- **主な利用シーン**: サーキットでのリアルタイムデータ入力
+- **タッチ最適化**: 最小44pxのタッチターゲット
+- **レスポンシブ対応**: スマートフォン、タブレット、PCで最適表示
+
+### 2. 効率的なデータ入力
+- **クイック入力モード**: 頻繁に変更する項目を1画面で入力
+- **階層化設計**: 使用頻度に応じた情報の配置
+- **自動計算機能**: 平均値やトレンドの自動算出
+
+### 3. 分析機能
+- **ダッシュボード**: 主要指標の可視化
+- **比較モード**: 複数セッションの横並び比較
+- **トレンド分析**: 気温や圧力の推移グラフ
+
+## 技術スタック
+
+- **フレームワーク**: React 18
+- **ビルドツール**: Vite
+- **スタイリング**: Tailwind CSS
+- **状態管理**: React Hooks (カスタムフック使用)
+- **データ永続化**: LocalStorage
+- **アイコン**: Lucide React
+
+## プロジェクト構成
+
+```
+CarSetup/
+├── src/
+│   ├── components/           # UIコンポーネント
+│   │   ├── common/          # 共通コンポーネント
+│   │   ├── Dashboard.jsx    # ダッシュボード
+│   │   ├── QuickInputView.jsx # クイック入力（統合版）
+│   │   ├── QuickInputMobile.jsx # モバイル専用（実装予定）
+│   │   ├── QuickInputDesktop.jsx # デスクトップ専用（実装予定）
+│   │   ├── CompactView.jsx  # 一覧表示
+│   │   ├── ComparisonView.jsx # 比較表示
+│   │   └── EditableSetupSheet.jsx # 詳細編集
+│   ├── hooks/               # カスタムフック
+│   │   └── useSetupSheets.js # データ管理フック
+│   ├── data/                # 定数データ
+│   │   └── constants.js    # サーキット・車両リスト
+│   ├── utils/               # ユーティリティ関数
+│   │   └── formatters.js   # 日付フォーマット等
+│   └── App.jsx             # メインアプリケーション
+├── public/                  # 静的ファイル
+├── index.html              # エントリーポイント
+└── package.json            # 依存関係
+
+```
+
+## 主要コンポーネントの説明
+
+### App.jsx
+- アプリケーションのルートコンポーネント
+- ビュー切り替えロジック
+- レスポンシブナビゲーション（デスクトップ: 上部、モバイル: 下部）
+
+### QuickInputView.jsx (分割予定)
+- **現在**: 統合版のクイック入力画面
+- **今後**: デバイス判定により以下を切り替え
+  - `QuickInputMobile.jsx`: スワイプ操作、ステップ入力
+  - `QuickInputDesktop.jsx`: 一覧入力、キーボード操作
+
+### Dashboard.jsx
+- セッションデータの分析画面
+- 主要指標のカード表示
+- トレンドグラフとタイヤ圧力分析
+
+### useSetupSheets.js
+- セットアップシートのCRUD操作
+- LocalStorageとの同期
+- 変更検知とリバート機能
+
+## 開発時の注意点
+
+### 1. レスポンシブデザイン
+```jsx
+// Tailwindのブレークポイント
+// sm: 640px以上（タブレット）
+// lg: 1024px以上（デスクトップ）
+// xl: 1280px以上（大画面）
+
+// 例: モバイルとデスクトップで異なる表示
+<div className="text-base sm:text-sm">  // モバイル: 16px, デスクトップ: 14px
+```
+
+### 2. タッチ操作の考慮
+```jsx
+// タッチターゲットの最小サイズ確保
+<button className="min-w-touch min-h-touch">  // 44px × 44px
+
+// タッチ操作の最適化
+<div className="touch-manipulation">  // ブラウザのタッチ遅延を無効化
+```
+
+### 3. 入力フィールドの最適化
+```jsx
+// 数値入力でテンキーを表示
+<input type="number" inputMode="decimal" />
+
+// 日本語入力を無効化
+<input type="text" lang="en" />
+```
+
+## データ構造
+
+### SetupSheet（セットアップシート）
+```javascript
+{
+  id: "unique-id",
+  dateTime: "2024-12-20T10:00",
+  trackName: "富士スピードウェイ",
+  vehicle: "Roadster",
+  driver: "山田太郎",
+  sessionType: "予選",
+  environment: {
+    weather: "晴れ",
+    airTemp: "25",
+    trackTemp: "35",
+    humidity: "60",
+    pressure: "1013"
+  },
+  setupBefore: {
+    tires: {
+      pressure: { fl: "160", fr: "160", rl: "180", rr: "180" },
+      brand: "YOKOHAMA",
+      compound: "A052",
+      mileage: "500"
+    },
+    suspension: {
+      dampers: {
+        fl: { bump: "12", rebound: "8" },
+        fr: { bump: "12", rebound: "8" },
+        rl: { bump: "10", rebound: "6" },
+        rr: { bump: "10", rebound: "6" }
+      },
+      rideHeight: { front: "100", rear: "110" }
+    },
+    fuel: "20"
+  },
+  setupAfter: {
+    tires: {
+      pressure: { fl: "200", fr: "200", rl: "220", rr: "220" }
+    }
+  },
+  driverNotes: {
+    cornerBalance: {
+      low: { entry: "neutral", mid: "neutral", exit: "neutral" },
+      high: { entry: "under", mid: "neutral", exit: "over" }
+    },
+    freeText: "フロントグリップ不足..."
+  }
+}
+```
+
+## 今後の開発予定
+
+### フェーズ3.2: クイック入力のデバイス別最適化
+1. デバイス判定ロジックの実装
+2. QuickInputMobileコンポーネントの作成
+3. QuickInputDesktopコンポーネントの作成
+4. スワイプ操作の実装（モバイル）
+5. キーボードショートカットの実装（デスクトップ）
+
+### 将来的な機能追加
+- PWA化（オフライン対応）
+- 天候情報の自動取得
+- 音声入力機能
+- 写真記録機能
+- データのクラウド同期
+
+## コマンド
+
+```bash
+# 開発サーバー起動
+npm run dev
+
+# ビルド
+npm run build
+
+# プレビュー
+npm run preview
+```
+
+## トラブルシューティング
+
+### PostCSS警告が出る場合
+package.jsonに以下を追加:
+```json
+{
+  "type": "module"
+}
+```
+
+### ビルドタイムスタンプの更新
+`App.jsx`の`BUILD_TIMESTAMP`を手動で更新してください。
+
+---
+
+最終更新: 2025/06/21
