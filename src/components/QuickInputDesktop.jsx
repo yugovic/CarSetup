@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Zap, Thermometer, Droplets, Save, TrendingUp, Info } from 'lucide-react';
 
-const DesktopNumberInput = ({ label, value, onChange, unit = '', min, max, step = 1, tabIndex, onEnter, compact = false }) => {
+const DesktopNumberInput = ({ label, value, onChange, unit = '', min, max, step = 1, tabIndex, onEnter, compact = false, tooltip }) => {
     const inputRef = useRef(null);
 
     const handleKeyDown = (e) => {
@@ -24,27 +24,31 @@ const DesktopNumberInput = ({ label, value, onChange, unit = '', min, max, step 
         }
     };
 
+    const placeholderText = label || tooltip || '';
+
     return (
-        <div className={`bg-gradient-to-br from-white/5 to-white/10 rounded-lg border border-white/10 hover:border-cyan-400/50 transition-all group ${
-            compact ? 'p-2' : 'p-3'
-        }`}>
-            {label && <label className="text-xs text-gray-400 block mb-1 truncate">{label}</label>}
-            <div className="flex items-center gap-1">
+        <div className={`relative bg-white/5 rounded border border-white/10 hover:border-cyan-400/50 transition-all group ${
+            compact ? 'p-1' : 'p-2'
+        }`} title={tooltip || label}>
+            <div className="flex items-center gap-0.5">
                 <input
                     ref={inputRef}
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={value || ''}
                     onChange={(e) => onChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className={`flex-1 min-w-0 bg-black/30 text-white font-mono border border-white/20 rounded outline-none focus:border-cyan-400 transition-colors ${
-                        compact ? 'text-xs px-1.5 py-0.5' : 'text-sm px-2 py-1'
+                    placeholder={placeholderText}
+                    className={`flex-1 min-w-0 bg-transparent text-white font-mono placeholder-gray-500 outline-none transition-colors ${
+                        compact ? 'text-xs px-1 py-0.5' : 'text-sm px-1.5 py-0.5'
                     }`}
                     min={min}
                     max={max}
                     step={step}
                     tabIndex={tabIndex}
                 />
-                {unit && <span className={`text-gray-400 flex-shrink-0 ${compact ? 'text-xs w-6' : 'text-xs w-8'}`}>{unit}</span>}
+                {unit && <span className={`text-gray-500 flex-shrink-0 ${compact ? 'text-xs' : 'text-xs'} pr-1`}>{unit}</span>}
             </div>
         </div>
     );
@@ -62,43 +66,45 @@ const TirePressureComparison = ({ beforePressures, afterPressures, onChange, tab
         const diff = calculateDiff(beforeValue, afterValue);
         
         return (
-            <div className="space-y-1">
-                <div className="text-xs text-gray-400 text-center font-medium">{label}</div>
-                <div className="flex items-center gap-1">
+            <div className="space-y-0.5">
+                <div className="text-xs text-gray-500 text-center font-medium">{label}</div>
+                <div className="flex items-center gap-0.5">
                     {/* 走行前 */}
                     <div className="flex-1 min-w-0">
                         <DesktopNumberInput
                             value={beforeValue}
                             onChange={(value) => onChange(`setupBefore.tires.pressure.${position}`, value)}
-                            unit="kPa"
+                            unit=""
                             min={100}
                             max={350}
                             step={5}
-                            tabIndex={tabIndex}
+                            tabIndex={tabIndex * 2}
                             compact={true}
+                            tooltip={`${label} 走行前`}
                         />
                     </div>
                     
                     {/* 矢印 */}
-                    <div className="text-gray-500 text-xs px-1">→</div>
+                    <div className="text-gray-600 text-xs">→</div>
                     
                     {/* 走行後 */}
                     <div className="flex-1 min-w-0 relative">
                         <DesktopNumberInput
                             value={afterValue}
                             onChange={(value) => onChange(`setupAfter.tires.pressure.${position}`, value)}
-                            unit="kPa"
+                            unit=""
                             min={100}
                             max={350}
                             step={5}
-                            tabIndex={tabIndex + 4}
+                            tabIndex={tabIndex * 2 + 1}
                             compact={true}
+                            tooltip={`${label} 走行後`}
                         />
                         {/* 差分表示 - 絶対配置で下に表示 */}
-                        <div className="absolute -bottom-5 left-0 right-0 text-center">
+                        <div className="absolute -bottom-3.5 left-0 right-0 text-center">
                             {afterValue && beforeValue && diff !== 0 ? (
                                 <span className={`text-xs font-mono ${
-                                    diff > 0 ? 'text-red-400' : 'text-blue-400'
+                                    diff > 0 ? 'text-red-500' : 'text-blue-500'
                                 }`}>
                                     {diff > 0 ? '+' : ''}{diff.toFixed(0)}
                                 </span>
@@ -113,10 +119,10 @@ const TirePressureComparison = ({ beforePressures, afterPressures, onChange, tab
     };
 
     return (
-        <div className="bg-black/20 rounded-xl p-2 border border-white/10">
-            <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto">
+        <div className="bg-black/20 rounded p-2 border border-white/10">
+            <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
                 {['fl', 'fr', 'rl', 'rr'].map((position, index) => (
-                    <div key={position} className="pb-4">
+                    <div key={position} className="pb-3">
                         <PressureInputWithDiff
                             label={position.toUpperCase()}
                             beforeValue={beforePressures?.[position]}
@@ -187,6 +193,14 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
         onSheetChange(newSheet);
     };
 
+    const calculateAvgPressure = (sheet) => {
+        if (!sheet?.setupBefore?.tires?.pressure) return 0;
+        const pressures = Object.values(sheet.setupBefore.tires.pressure);
+        const validPressures = pressures.filter(p => p && !isNaN(p));
+        if (validPressures.length === 0) return 0;
+        return validPressures.reduce((sum, p) => sum + parseFloat(p), 0) / validPressures.length;
+    };
+
     // キーボードショートカット
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -208,45 +222,61 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
     const weatherOptions = ['晴れ', '曇り', '雨', '小雨', '大雨', '雪'];
 
     return (
-        <div className="bg-gradient-to-br from-gray-900/90 via-gray-900/80 to-gray-900/70 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-6">
+        <div className="bg-gray-900 border border-white/10 rounded-lg p-4">
             {/* ヘッダー */}
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl shadow-lg">
-                        <Zap className="text-white" size={20} />
+            <div className="bg-black/20 rounded-lg p-3 mb-3 border border-white/10">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <Zap className="text-yellow-400" size={18} />
+                        <h2 className="text-xl font-bold text-white">クイック入力</h2>
                     </div>
-                    <h2 className="text-2xl font-bold text-white">クイック入力</h2>
+                    <div className="flex items-center gap-4">
+                        {/* リアルタイム統計 */}
+                        <div className="flex items-center gap-3 text-xs">
+                            <div className="flex items-center gap-1">
+                                <span className="text-gray-400">平均圧:</span>
+                                <span className="text-white font-mono">{calculateAvgPressure(sheet).toFixed(0)}kPa</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <span className="text-gray-400">気温:</span>
+                                <span className="text-white font-mono">{sheet.environment?.airTemp || '-'}°C</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <span className="text-gray-400">路温:</span>
+                                <span className="text-white font-mono">{sheet.environment?.trackTemp || '-'}°C</span>
+                            </div>
+                        </div>
+                        {hasUnsavedChanges && (
+                            <button 
+                                onClick={onSave}
+                                className="bg-green-500 hover:bg-green-400 text-white font-semibold py-1.5 px-3 rounded text-sm transition-all"
+                            >
+                                <Save size={14} />
+                            </button>
+                        )}
+                    </div>
                 </div>
-                {hasUnsavedChanges && (
-                    <button 
-                        onClick={onSave}
-                        className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white font-semibold py-2 px-4 rounded-lg transition-all text-sm"
-                    >
-                        <Save size={16} />
-                        保存
-                    </button>
-                )}
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {/* メインコンテンツ */}
-                <div className="xl:col-span-2 space-y-4">
+            <div className="space-y-3">
                     {/* 環境データ */}
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Thermometer className="text-cyan-400" size={16} />
-                            <h3 className="text-lg font-semibold text-cyan-300">環境データ</h3>
+                    <div className="border border-white/10 rounded p-3 bg-black/30">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                                <Thermometer size={14} />
+                                環境データ
+                            </h3>
                         </div>
-                        <div className="grid grid-cols-6 gap-2">
-                            <div className="bg-gradient-to-br from-white/5 to-white/10 rounded-lg p-2 border border-white/10">
-                                <label className="text-xs text-gray-400 block mb-1">天候</label>
+                        <div className="grid grid-cols-6 gap-1.5">
+                            <div className="relative">
                                 <select 
                                     value={sheet.environment?.weather || ''} 
                                     onChange={(e) => handleChange('environment.weather', e.target.value)}
-                                    className="w-full bg-black/30 text-white text-xs border border-white/20 rounded px-1 py-0.5 outline-none focus:border-cyan-400 transition-colors"
+                                    className="w-full bg-transparent text-white text-xs border border-white/10 rounded px-1 py-1 outline-none focus:border-cyan-400"
                                     tabIndex={1}
+                                    title="天候"
                                 >
-                                    <option value="">-</option>
+                                    <option value="">天候</option>
                                     {weatherOptions.map(option => (
                                         <option key={option} value={option} className="bg-gray-800">
                                             {option}
@@ -255,7 +285,7 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
                                 </select>
                             </div>
                             <DesktopNumberInput 
-                                label="気温" 
+                                tooltip="気温"
                                 value={sheet.environment?.airTemp} 
                                 onChange={(value) => handleChange('environment.airTemp', value)}
                                 unit="°C"
@@ -265,7 +295,7 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
                                 compact={true}
                             />
                             <DesktopNumberInput 
-                                label="路温" 
+                                tooltip="路面温度" 
                                 value={sheet.environment?.trackTemp} 
                                 onChange={(value) => handleChange('environment.trackTemp', value)}
                                 unit="°C"
@@ -275,7 +305,7 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
                                 compact={true}
                             />
                             <DesktopNumberInput 
-                                label="湿度" 
+                                tooltip="湿度" 
                                 value={sheet.environment?.humidity} 
                                 onChange={(value) => handleChange('environment.humidity', value)}
                                 unit="%"
@@ -285,7 +315,7 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
                                 compact={true}
                             />
                             <DesktopNumberInput 
-                                label="気圧" 
+                                tooltip="気圧" 
                                 value={sheet.environment?.pressure} 
                                 onChange={(value) => handleChange('environment.pressure', value)}
                                 unit="hPa"
@@ -295,7 +325,7 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
                                 compact={true}
                             />
                             <DesktopNumberInput 
-                                label="燃料" 
+                                tooltip="燃料量" 
                                 value={sheet.setupBefore?.fuel} 
                                 onChange={(value) => handleChange('setupBefore.fuel', value)}
                                 unit="L"
@@ -309,14 +339,14 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
                     </div>
 
                     {/* タイヤ空気圧 */}
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <Droplets className="text-blue-400" size={16} />
-                                <h3 className="text-lg font-semibold text-blue-300">タイヤ空気圧</h3>
-                            </div>
-                            <div className="text-xs text-gray-400">
-                                <span className="text-gray-300">走行前</span> → <span className="text-gray-300">走行後</span> (kPa)
+                    <div className="border border-white/10 rounded p-3 bg-black/30">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                                <Droplets size={14} />
+                                タイヤ空気圧
+                            </h3>
+                            <div className="text-xs text-gray-500">
+                                走行前 → 走行後 (kPa)
                             </div>
                         </div>
                         <TirePressureComparison
@@ -328,18 +358,18 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
                     </div>
 
                     {/* ダンパー設定 */}
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-orange-400 rounded"></div>
-                                <h3 className="text-lg font-semibold text-orange-300">ダンパー設定</h3>
-                            </div>
-                            <div className="text-xs text-gray-400">
-                                <span className="text-gray-300">Bump</span> / <span className="text-gray-300">Rebound</span> (click)
+                    <div className="border border-white/10 rounded p-3 bg-black/30">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                                <div className="w-3 h-3 bg-orange-400 rounded"></div>
+                                ダンパー設定
+                            </h3>
+                            <div className="text-xs text-gray-500">
+                                Bump / Rebound (click)
                             </div>
                         </div>
-                        <div className="bg-black/20 rounded-xl p-2 border border-white/10">
-                            <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto">
+                        <div className="bg-black/20 rounded p-2 border border-white/10">
+                            <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
                                 {['fl', 'fr', 'rl', 'rr'].map((corner, index) => (
                                     <div key={corner} className="space-y-1">
                                         <div className="text-xs text-gray-400 text-center font-medium">{corner.toUpperCase()}</div>
@@ -373,43 +403,6 @@ export const QuickInputDesktop = ({ sheet, onSheetChange, onSave, hasUnsavedChan
                             </div>
                         </div>
                     </div>
-                </div>
-
-                {/* サイドパネル */}
-                <div className="space-y-4">
-                    {/* クイック統計 */}
-                    <QuickStats sheet={sheet} previousSheet={previousSheet} />
-
-                    {/* ショートカット一覧 */}
-                    <div className="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 rounded-xl p-4 border border-purple-500/20">
-                        <h4 className="text-sm font-medium text-purple-300 mb-3 flex items-center gap-2">
-                            <Info size={16} />
-                            キーボードショートカット
-                        </h4>
-                        <div className="space-y-2 text-xs">
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">保存:</span>
-                                <kbd className="px-2 py-1 bg-black/30 rounded text-gray-300">Ctrl+S</kbd>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">次の項目:</span>
-                                <kbd className="px-2 py-1 bg-black/30 rounded text-gray-300">Tab</kbd>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">前の項目:</span>
-                                <kbd className="px-2 py-1 bg-black/30 rounded text-gray-300">Shift+Tab</kbd>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">値を増やす:</span>
-                                <kbd className="px-2 py-1 bg-black/30 rounded text-gray-300">↑</kbd>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">値を減らす:</span>
-                                <kbd className="px-2 py-1 bg-black/30 rounded text-gray-300">↓</kbd>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );
