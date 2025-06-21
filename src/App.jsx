@@ -12,7 +12,7 @@ import { trackList, vehicleList } from './data/constants';
 import { formatDateTime } from './utils/formatters';
 
 // ビルドタイムスタンプ
-const BUILD_TIMESTAMP = '2025/06/21 3:15';
+const BUILD_TIMESTAMP = '2025/06/21 3:45';
 
 export default function App() {
     const [view, setView] = useState('dashboard');
